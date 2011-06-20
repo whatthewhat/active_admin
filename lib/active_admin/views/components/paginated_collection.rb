@@ -1,6 +1,5 @@
 module ActiveAdmin
   module Views
-
     # Wraps the content with pagination and available formats.
     #
     # *Example:*
@@ -22,8 +21,6 @@ module ActiveAdmin
     #
     class PaginatedCollection < ActiveAdmin::Component
       builder_method :paginated_collection
-
-
       # Builds a new paginated collection component
       #
       # @param [Array] collection  A "paginated" collection from kaminari
@@ -42,9 +39,9 @@ module ActiveAdmin
       # Override add_child to insert all children into the @contents div
       def add_child(*args, &block)
         if @built
-          @contents.add_child(*args, &block)
+        @contents.add_child(*args, &block)
         else
-          super
+        super
         end
       end
 
@@ -72,13 +69,23 @@ module ActiveAdmin
       # modified from will_paginate
       def page_entries_info(options = {})
         entry_name = options[:entry_name] ||
-          (collection.empty?? 'entry' : collection.first.class.name.underscore.sub('_', ' '))
+        (collection.empty?? 'entry' : collection.first.class.name.underscore.sub('_', ' '))
 
         if collection.num_pages < 2
-          case collection.size
-          when 0; I18n.t('active_admin.pagination.empty', :model => entry_name.pluralize)
-          when 1; I18n.t('active_admin.pagination.one', :model => entry_name)
-          else;   I18n.t('active_admin.pagination.one_page', :model => entry_name.pluralize, :n => collection.size)
+          # Hack to enable pluralization for russian model names
+          if I18n.locale == :ru
+            case collection.size
+            when 0; I18n.t('active_admin.pagination.empty', :model => I18n.t(entry_name, :count => 0))
+            when 1; I18n.t('active_admin.pagination.one', :model => entry_name)
+            when 2||3||4; I18n.t('active_admin.pagination.one_page', :model => I18n.t(entry_name, :count => 2), :n => collection.size)
+            else;   I18n.t('active_admin.pagination.one_page', :model => I18n.t(entry_name, :count => 0), :n => collection.size)
+            end
+          else
+            case collection.size
+            when 0; I18n.t('active_admin.pagination.empty', :model => entry_name.pluralize)
+            when 1; I18n.t('active_admin.pagination.one', :model => entry_name)
+            else;   I18n.t('active_admin.pagination.one_page', :model => entry_name.pluralize, :n => collection.size)
+            end
           end
         else
           offset = collection.current_page * active_admin_application.default_per_page

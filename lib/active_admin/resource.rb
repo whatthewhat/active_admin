@@ -86,7 +86,11 @@ module ActiveAdmin
 
     # Returns the plural version of this resource
     def plural_resource_name
-      @plural_resource_name ||= resource_name.pluralize
+      if I18n.locale == :ru
+        @plural_resource_name ||= I18n.t(resource_name, :count => 10)
+      else
+        @plural_resource_name ||= resource_name.pluralize
+      end
     end
 
     def resource_table_name
