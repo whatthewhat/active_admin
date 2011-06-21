@@ -80,12 +80,18 @@ module ActiveAdmin
       @resource_name ||= if @options[:as] || !resource.respond_to?(:model_name)
         underscored_resource_name.titleize
       else
-        resource.model_name.human.titleize
+        # Hack for russian pluralization
+        if I18n.locale == :ru
+          resource.model_name
+        else
+          resource.model_name.human.titleize
+        end
       end
     end
 
     # Returns the plural version of this resource
     def plural_resource_name
+      # Hack for russian pluralization
       if I18n.locale == :ru
         @plural_resource_name ||= I18n.t(resource_name, :count => 10)
       else
