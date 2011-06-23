@@ -77,7 +77,7 @@ module ActiveAdmin
             case collection.size
             when 0; I18n.t('active_admin.pagination.empty', :model => I18n.t(entry_name, :count => 0))
             when 1; I18n.t('active_admin.pagination.one', :model => I18n.t(entry_name, :count => 1))
-            when 2||3||4; I18n.t('active_admin.pagination.one_page', :model => I18n.t(entry_name, :count => 2), :n => collection.size)
+            when 2..4; I18n.t('active_admin.pagination.one_page', :model => I18n.t(entry_name, :count => 2), :n => collection.size)
             else;   I18n.t('active_admin.pagination.one_page', :model => I18n.t(entry_name, :count => 0), :n => collection.size)
             end
           else
