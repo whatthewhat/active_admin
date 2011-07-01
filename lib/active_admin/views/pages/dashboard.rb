@@ -2,7 +2,6 @@ module ActiveAdmin
   module Views
     module Pages
       class Dashboard < Base
-
         def main_content
           if assigns[:dashboard_sections] && assigns[:dashboard_sections].any?
             render_sections(assigns[:dashboard_sections])
@@ -17,9 +16,10 @@ module ActiveAdmin
         def build_sidebar; end
 
         def title
-          "Dashboard"
-        end
-
+          I18n.t!("active_admin.dashboard")
+          rescue I18n::MissingTranslationData
+            "Dashboard"
+          end
         def render_sections(sections)
           table :class => "dashboard" do
             sections.in_groups_of(3, false).each do |row|
