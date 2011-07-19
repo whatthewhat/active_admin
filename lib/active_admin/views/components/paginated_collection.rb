@@ -90,7 +90,7 @@ module ActiveAdmin
         else
           offset = collection.current_page * active_admin_application.default_per_page
           total  = collection.total_count
-          I18n.t('active_admin.pagination.multiple', :model => entry_name.pluralize, :from => (offset - active_admin_application.default_per_page + 1), :to => offset > total ? total : offset, :total => total)
+          I18n.t('active_admin.pagination.multiple', :model => I18n.t(entry_name, :count => 2), :from => (offset - active_admin_application.default_per_page + 1), :to => offset > total ? total : offset, :total => total)
         end
       end
 
