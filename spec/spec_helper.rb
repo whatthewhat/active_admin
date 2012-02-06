@@ -1,13 +1,4 @@
-$LOAD_PATH.unshift(File.dirname(__FILE__))
-$LOAD_PATH << File.expand_path('../support', __FILE__)
-
-ENV['BUNDLE_GEMFILE'] = File.expand_path('../../Gemfile', __FILE__)
-
-require "bundler"
-Bundler.setup
-
-require 'shoulda/active_record'
-include Shoulda::ActiveRecord::Macros
+require File.expand_path("../spec_helper_without_rails", __FILE__)
 
 module ActiveAdminIntegrationSpecHelper
   extend self
@@ -58,6 +49,16 @@ module ActiveAdminIntegrationSpecHelper
     end
   end
 
+  # Sets up an Arbre::Builder context
+  def setup_arbre_context!
+    include Arbre::Builder
+    let(:assigns){ {} }
+    let(:helpers){ mock_action_view }
+    before do
+      @_helpers = helpers
+    end
+  end
+
   # Setup a describe block which uses capybara and rails integration
   # test methods.
   def describe_with_capybara(*args, &block)
@@ -77,12 +78,17 @@ module ActiveAdminIntegrationSpecHelper
   end  
   alias_method :action_view, :mock_action_view
 
+  # A mock resource to register
+  class MockResource
+  end
+
 end
 
-ENV['RAILS'] ||= '3.0.0'
 ENV['RAILS_ENV'] = 'test'
 
-ENV['RAILS_ROOT'] = File.expand_path("../rails/rails-#{ENV["RAILS"]}", __FILE__)
+require 'detect_rails_version'
+rails_version = detect_rails_version
+ENV['RAILS_ROOT'] = File.expand_path("../rails/rails-#{rails_version}", __FILE__)
 
 # Create the test app if it doesn't exists
 unless File.exists?(ENV['RAILS_ROOT'])

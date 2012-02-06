@@ -1,3 +1,13 @@
+require 'active_admin/resource/action_items'
+require 'active_admin/resource/controllers'
+require 'active_admin/resource/menu'
+require 'active_admin/resource/page_presenters'
+require 'active_admin/resource/pagination'
+require 'active_admin/resource/naming'
+require 'active_admin/resource/scopes'
+require 'active_admin/resource/sidebars'
+require 'active_admin/resource/belongs_to'
+
 module ActiveAdmin
 
   # Resource is the primary data storage for resource configuration in Active Admin
@@ -13,26 +23,17 @@ module ActiveAdmin
     # Event dispatched when a new resource is registered
     RegisterEvent = 'active_admin.resource.register'.freeze
 
-    autoload :BelongsTo, 'active_admin/resource/belongs_to'
-
-    # The namespace this resource belongs to
+    # The namespace this config belongs to
     attr_reader :namespace
 
-    # The class this resource wraps. If you register the Post model, Resource#resource
-    # will point to the Post class
-    attr_reader :resource
-
-    # A hash of page configurations for the controller indexed by action name
-    attr_reader :page_configs
+    # The name of the resource class
+    attr_reader :resource_class_name
 
     # An array of member actions defined for this resource
     attr_reader :member_actions
 
     # An array of collection actions defined for this resource
     attr_reader :collection_actions
-
-    # The titleized name to use for this resource
-    attr_accessor :resource_name
 
     # The default sort order to use in the controller
     attr_accessor :sort_order
@@ -43,86 +44,37 @@ module ActiveAdmin
     # If we're scoping resources, use this method on the parent to return the collection
     attr_accessor :scope_to_association_method
 
-    # Set to false to turn off admin notes
-    attr_accessor :admin_notes
-
     # Set the configuration for the CSV
     attr_writer :csv_builder
 
-    def initialize(namespace, resource, options = {})
-      @namespace = namespace
-      @resource = resource
-      @options = default_options.merge(options)
-      @sort_order = @options[:sort_order]
-      @page_configs = {}
-      @menu_options = {}
-      @member_actions, @collection_actions = [], []
-      @scopes = []
-    end
-
-    # An underscored safe representation internally for this resource
-    def underscored_resource_name
-      @underscored_resource_name ||= if @options[:as]
-        @options[:as].gsub(' ', '').underscore.singularize
-      else
-        resource.name.gsub('::','').underscore
+    module Base
+      def initialize(namespace, resource_class, options = {})
+        @namespace = namespace
+        @resource_class_name = "::#{resource_class.name}"
+        @options = default_options.merge(options)
+        @sort_order = @options[:sort_order]
+        @member_actions, @collection_actions = [], []
       end
     end
 
-    # A camelized safe representation for this resource
-    def camelized_resource_name
-      underscored_resource_name.camelize
-    end
+    include Base
+    include Controllers
+    include PagePresenters
+    include Pagination
+    include ActionItems
+    include Naming
+    include Scopes
+    include Sidebars
+    include Menu
 
-    # Returns the name to call this resource.
-    # By default will use resource.model_name.human
-    def resource_name
-      @resource_name ||= if @options[:as] || !resource.respond_to?(:model_name)
-        underscored_resource_name.titleize
-      else
-        # Hack for russian pluralization
-        if I18n.locale == :ru
-          resource.model_name
-        else
-          resource.model_name.human.titleize
-        end
-      end
-    end
-
-    # Returns the plural version of this resource
-    def plural_resource_name
-      # Hack for russian pluralization
-      if I18n.locale == :ru
-        @plural_resource_name ||= I18n.t(resource_name, :count => 10)
-      else
-        @plural_resource_name ||= resource_name.pluralize
-      end
+    # The class this resource wraps. If you register the Post model, Resource#resource_class
+    # will point to the Post class
+    def resource_class
+      ActiveSupport::Dependencies.constantize(resource_class_name)
     end
 
     def resource_table_name
-      resource.table_name
-    end
-
-    # Returns a properly formatted controller name for this
-    # resource within its namespace
-    def controller_name
-      [namespace.module_name, camelized_resource_name.pluralize + "Controller"].compact.join('::')
-    end
-
-    # Returns the controller for this resource
-    def controller
-      @controller ||= controller_name.constantize
-    end
-
-    # Returns the routes prefix for this resource
-    def route_prefix
-      namespace.module_name.try(:underscore)
-    end
-
-    # Returns a symbol for the route to use to get to the
-    # collection of this resource
-    def route_collection_path
-      [route_prefix, controller.resources_configuration[:self][:route_collection_name], 'path'].compact.join('_').to_sym
+      resource_class.quoted_table_name
     end
 
     # Returns the named route for an instance of this resource
@@ -130,39 +82,19 @@ module ActiveAdmin
       [route_prefix, controller.resources_configuration[:self][:route_instance_name], 'path'].compact.join('_').to_sym
     end
 
-    # Set the menu options. To not add this resource to the menu, just
-    # call #menu(false)
-    def menu(options = {})
-      options = options == false ? { :display => false } : options
-      @menu_options = options
-    end
+    # Returns a symbol for the route to use to get to the
+    # collection of this resource
+    def route_collection_path
+      route = super
 
-    # Returns the name to put this resource under in the menu
-    def parent_menu_item_name
-      @menu_options[:parent]
-    end
+      # Handle plural resources.
+      if controller.resources_configuration[:self][:route_collection_name] ==
+            controller.resources_configuration[:self][:route_instance_name]
+        route = route.to_s.gsub('_path', '_index_path').to_sym
+      end
 
-    # Returns the name to be displayed in the menu for this resource
-    def menu_item_name
-      @menu_options[:label] || plural_resource_name
+      route
     end
-    
-    # Returns the items priority for altering the default sort order
-    def menu_item_priority
-      @menu_options[:priority] || 10
-    end
-    
-    # Returns a proc for deciding whether to display the menu item or not in the view
-    def menu_item_display_if
-      @menu_options[:if] || proc { true }
-    end
-
-    # Should this resource be added to the menu system?
-    def include_in_menu?
-      return false if @menu_options[:display] == false
-      !(belongs_to? && !belongs_to_config.optional?)
-    end
-
 
     # Clears all the member actions this resource knows about
     def clear_member_actions!
@@ -171,32 +103,6 @@ module ActiveAdmin
 
     def clear_collection_actions!
       @collection_actions = []
-    end
-
-    # Return an array of scopes for this resource
-    def scopes
-      @scopes
-    end
-
-    # Returns a scope for this object by its identifier
-    def get_scope_by_id(id)
-      id = id.to_s
-      @scopes.find{|s| s.id == id }
-    end
-
-    def default_scope
-      @default_scope
-    end
-
-    # Create a new scope object for this resource.
-    # If you want to internationalize the scope name, you can add
-    # to your i18n files a key like "active_admin.scopes.scope_method".
-    def scope(*args, &block)
-      options = args.extract_options!
-      @scopes << ActiveAdmin::Scope.new(*args, &block)
-      if options[:default]
-        @default_scope = @scopes.last
-      end
     end
 
     # Are admin notes turned on for this resource
@@ -218,22 +124,32 @@ module ActiveAdmin
       !belongs_to_config.nil?
     end
 
+    def include_in_menu?
+      super && !(belongs_to? && !belongs_to_config.optional?)
+    end
+
     # The csv builder for this resource
     def csv_builder
       @csv_builder || default_csv_builder
     end
 
+    # @deprecated
+    def resource
+      resource_class
+    end
+    ActiveAdmin::Deprecation.deprecate self, :resource,
+      "ActiveAdmin::Resource#resource is deprecated. Please use #resource_class instead."
+
     private
 
     def default_options
       {
-        :namespace  => ActiveAdmin.application.default_namespace,
-        :sort_order => ActiveAdmin.application.default_sort_order
+        :sort_order => "#{resource_class.respond_to?(:primary_key) ? resource_class.primary_key : 'id'}_desc"
       }
     end
 
     def default_csv_builder
-      @default_csv_builder ||= CSVBuilder.default_for_resource(resource)
+      @default_csv_builder ||= CSVBuilder.default_for_resource(resource_class)
     end
   end # class Resource
 end # module ActiveAdmin

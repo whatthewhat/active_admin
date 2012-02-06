@@ -2,6 +2,7 @@ module ActiveAdmin
   module Views
     module Pages
       class Dashboard < Base
+
         def main_content
           if assigns[:dashboard_sections] && assigns[:dashboard_sections].any?
             render_sections(assigns[:dashboard_sections])
@@ -16,10 +17,9 @@ module ActiveAdmin
         def build_sidebar; end
 
         def title
-          I18n.t!("active_admin.dashboard")
-          rescue I18n::MissingTranslationData
-            "Dashboard"
-          end
+          I18n.t("active_admin.dashboard")
+        end
+
         def render_sections(sections)
           table :class => "dashboard" do
             sections.in_groups_of(3, false).each do |row|
@@ -48,8 +48,11 @@ module ActiveAdmin
         end
 
         def default_welcome_section
-          para :id => "dashboard_default_message" do
-            I18n.t('active_admin.dashboard_welcome')
+          div :class => "blank_slate_container", :id => "dashboard_default_message" do
+            span :class => "blank_slate" do
+              span I18n.t('active_admin.dashboard_welcome.welcome')
+              small I18n.t('active_admin.dashboard_welcome.call_to_action')
+            end
           end
         end
 

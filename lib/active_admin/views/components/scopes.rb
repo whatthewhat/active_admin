@@ -6,30 +6,40 @@ module ActiveAdmin
     class Scopes < ActiveAdmin::Component
       builder_method :scopes_renderer
 
-      def build(scopes)
-        scopes.each do |scope|
-          build_scope(scope)
+      include ActiveAdmin::ScopeChain
+
+      def default_class_name
+        "scopes table_tools_segmented_control"
+      end
+
+      def tag_name
+        'ul'
+      end
+
+      def build(scopes, options = {})
+        unless current_filter_search_empty?
+          scopes.each do |scope|
+            build_scope(scope, options) if call_method_or_proc_on(self, scope.display_if_block)
+          end
         end
       end
 
       protected
 
-      def build_scope(scope)
-        span :class => classes_for_scope(scope) do
+      def build_scope(scope, options)
+        li :class => classes_for_scope(scope) do
           begin
-            scope_name = I18n.t!("active_admin.scopes.#{scope.scope_method}")
+            scope_name = I18n.t!("active_admin.scopes.#{scope.id}")
           rescue I18n::MissingTranslationData
             scope_name = scope.name
           end
 
-          if current_scope?(scope)
-            em(scope_name)
-          else
-            a(scope_name, :href => url_for(params.merge(:scope => scope.id, :page => 1)))
+          a :href => url_for(params.merge(:scope => scope.id, :page => 1)), :class => "table_tools_button" do
+            text_node scope_name
+            span :class => 'count' do
+              "(" + get_scope_count(scope).to_s + ")"
+            end if options[:scope_count]
           end
-          text_node(" ")
-          scope_count(scope)
-          text_node(" ")
         end
       end
 
@@ -47,22 +57,17 @@ module ActiveAdmin
         end
       end
 
-      def scope_count(scope)
-        span :class => 'count' do
-          "(" + get_scope_count(scope).to_s + ")"
-        end
+      def current_filter_search_empty?
+        collection.empty? && params.include?(:q)
       end
 
+      # Return the count for the scope passed in.
       def get_scope_count(scope)
-        if scope.scope_method
-          scoping_class.send(scope.scope_method).count
-        else
-          instance_exec(scoping_class, &scope.scope_block).count
-        end
+        scope_chain(scope, scoping_class).count
       end
 
       def scoping_class
-        assigns["before_scope_collection"] || active_admin_config.resource
+        assigns["before_scope_collection"] || active_admin_config.resource_class
       end
 
     end

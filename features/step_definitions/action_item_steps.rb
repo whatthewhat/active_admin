@@ -1,7 +1,7 @@
-Then /^I should see an action item button "([^"]*)"$/ do |content|
-  Then %{I should see "#{content}" within ".action_items a"}
+Then /^I should see an action item link to "([^"]*)"$/ do |link|
+  page.should have_css('.action_item a', :text => link)
 end
 
-Then /^I should not see an action item button "([^"]*)"$/ do |content|
-  Then %{I should not see "#{content}" within ".action_items"}
+Then /^I should not see an action item link to "([^"]*)"$/ do |link|
+  page.should_not have_css('.action_item a', :text => link)
 end

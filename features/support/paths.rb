@@ -12,6 +12,8 @@ module NavigationHelpers
       '/'
     when /the dashboard/
       "/admin"
+    when /the new post page/
+      "/admin/posts/new"
 
     # the index page for posts in the root namespace
     # the index page for posts in the user_admin namespace
@@ -25,6 +27,12 @@ module NavigationHelpers
     # same as above, except defaults to admin namespace
     when /^the index page for (.*)$/
       send(:"admin_#{$1}_path")
+
+    when /^the last author's posts$/
+      admin_user_posts_path(User.last)
+
+    when /^the last author's last post page$/
+      admin_user_post_path(User.last, Post.where(:author_id => User.last.id).last)
 
     # Add more mappings here.
     # Here is an example that pulls values out of the Regexp:

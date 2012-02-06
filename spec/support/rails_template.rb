@@ -2,13 +2,16 @@
 
 # Create a cucumber database and environment
 copy_file File.expand_path('../templates/cucumber.rb', __FILE__), "config/environments/cucumber.rb"
+copy_file File.expand_path('../templates/cucumber_with_reloading.rb', __FILE__), "config/environments/cucumber_with_reloading.rb"
+
 gsub_file 'config/database.yml', /^test:.*\n/, "test: &test\n"
 gsub_file 'config/database.yml', /\z/, "\ncucumber:\n  <<: *test\n  database: db/cucumber.sqlite3"
+gsub_file 'config/database.yml', /\z/, "\ncucumber_with_reloading:\n  <<: *test\n  database: db/cucumber.sqlite3"
 
 # Generate some test models
 generate :model, "post title:string body:text published_at:datetime author_id:integer category_id:integer"
 inject_into_file 'app/models/post.rb', "  belongs_to :author, :class_name => 'User'\n  belongs_to :category\n  accepts_nested_attributes_for :author\n", :after => "class Post < ActiveRecord::Base\n"
-generate :model, "user type:string first_name:string last_name:string username:string"
+generate :model, "user type:string first_name:string last_name:string username:string age:integer"
 inject_into_file 'app/models/user.rb', "  has_many :posts, :foreign_key => 'author_id'\n", :after => "class User < ActiveRecord::Base\n"
 generate :model, "publisher --migration=false --parent=User"
 generate :model, 'category name:string description:text'
@@ -22,6 +25,14 @@ run "rm -r test"
 run "rm -r spec"
 
 $LOAD_PATH.unshift(File.join(File.dirname(__FILE__), '..', 'lib'))
+
+# we need this routing path, named "logout_path", for testing
+route <<-EOS
+  devise_scope :user do
+    match '/admin/logout' => 'active_admin/devise/sessions#destroy', :as => :logout
+  end
+EOS
+
 generate :'active_admin:install'
 
 # Setup a root path for devise

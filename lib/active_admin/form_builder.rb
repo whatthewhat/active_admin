@@ -1,7 +1,5 @@
-require 'formtastic'
-
 module ActiveAdmin
-  class FormBuilder < ::Formtastic::SemanticFormBuilder
+  class FormBuilder < ::Formtastic::FormBuilder
 
     attr_reader :form_buffers
 
@@ -20,7 +18,7 @@ module ActiveAdmin
     # The input method returns a properly formatted string for
     # its contents, so we want to skip the internal buffering
     # while building up its contents
-    def input(*args)
+    def input(method, *args)
       content = with_new_form_buffer { super }
       return content.html_safe unless @inputs_with_block
       form_buffers.last << content.html_safe
@@ -48,14 +46,6 @@ module ActiveAdmin
     def commit_button_with_cancel_link
       content = commit_button
       content << cancel_link
-    end
-
-    def datepicker_input(method, options)
-      options = options.dup
-      options[:input_html] ||= {}
-      options[:input_html][:class] = [options[:input_html][:class], "datepicker"].compact.join(' ')
-      options[:input_html][:size] ||= "10"
-      string_input(method, options)
     end
 
     def has_many(association, options = {}, &block)
@@ -94,6 +84,31 @@ module ActiveAdmin
         end
       end
       form_buffers.last << content.html_safe
+    end
+
+    protected
+
+    def active_admin_input_class_name(as)
+      "ActiveAdmin::Inputs::#{as.to_s.camelize}Input"
+    end
+
+    def input_class(as)
+      @input_classes_cache ||= {}
+      @input_classes_cache[as] ||= begin
+        begin
+          begin
+            custom_input_class_name(as).constantize
+          rescue NameError
+            begin
+              active_admin_input_class_name(as).constantize
+            rescue NameError
+              standard_input_class_name(as).constantize
+            end
+          end
+        rescue NameError
+          raise Formtastic::UnknownInputError
+        end
+      end
     end
 
     private

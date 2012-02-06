@@ -2,25 +2,23 @@ module ActiveAdmin
   module Callbacks
     extend ActiveSupport::Concern
 
-    module InstanceMethods
-      protected
+    protected
 
-      # Simple callback system. Implements before and after callbacks for
-      # use within the controllers.
-      #
-      # We didn't use the ActiveSupport callbacks becuase they do not support
-      # passing in any arbitrary object into the callback method (which we
-      # need to do)
-      
-      def call_callback_with(method, *args)
-        case method
-        when Symbol
-          send(method, *args)
-        when Proc
-          instance_exec(*args, &method)
-        else
-          raise "Please register with callbacks using a symbol or a block/proc."
-        end
+    # Simple callback system. Implements before and after callbacks for
+    # use within the controllers.
+    #
+    # We didn't use the ActiveSupport callbacks becuase they do not support
+    # passing in any arbitrary object into the callback method (which we
+    # need to do)
+
+    def call_callback_with(method, *args)
+      case method
+      when Symbol
+        send(method, *args)
+      when Proc
+        instance_exec(*args, &method)
+      else
+        raise "Please register with callbacks using a symbol or a block/proc."
       end
     end
 
@@ -58,12 +56,14 @@ module ActiveAdmin
       def define_active_admin_callbacks(*names)
         names.each do |name|
           [:before, :after].each do |type|
-            # Create an inheritable accessor array for the callbacks
-            class_inheritable_array "#{type}_#{name}_callbacks".to_sym
-            send("#{type}_#{name}_callbacks=".to_sym, [])
 
             # Define a method to set the callback
             class_eval(<<-EOS, __FILE__, __LINE__ + 1)
+              # def self.before_create_callbacks
+              def self.#{type}_#{name}_callbacks
+                @#{type}_#{name}_callbacks ||= []
+              end
+
               # def self.before_create
               def self.#{type}_#{name}(method = nil, &block)
                 #{type}_#{name}_callbacks << (method || block)

@@ -2,32 +2,35 @@ module ActiveAdmin
   module Dashboards
     class DashboardController < ResourceController
 
-      before_filter :skip_sidebar!
-
       actions :index
-
-      clear_action_items!
 
       def index
         @dashboard_sections = find_sections
+        render 'active_admin/dashboard/index'
       end
 
-      protected
-
-      # Override _prefix so we force ActionController to render
-      # the views from active_admin/dashboard instead of default path.
-      def _prefix
-        'active_admin/dashboard'
-      end
+      private
 
       def set_current_tab
-        @current_tab = "Dashboard"
+        @current_tab = I18n.t("active_admin.dashboard")
       end
 
       def find_sections
-        ActiveAdmin::Dashboards.sections_for_namespace(namespace)
+        sections = ActiveAdmin::Dashboards.sections_for_namespace(namespace)        
+        sections.select do |section|
+          if section.options.has_key?(:if)
+            symbol_or_proc = section.options[:if]
+            case symbol_or_proc
+            when Symbol, String then self.send(symbol_or_proc)
+            when Proc           then instance_exec(&symbol_or_proc)
+            else symbol_or_proc
+            end
+          else
+            true
+          end
+        end
       end
-
+      
       def namespace
         class_name = self.class.name
         if class_name.include?('::')
@@ -39,7 +42,11 @@ module ActiveAdmin
 
       # Return the current menu for the view. This is a helper method
       def current_menu
-        ActiveAdmin.application.namespaces[namespace].menu
+        active_admin_namespace.menu
+      end
+
+      def active_admin_namespace
+        ActiveAdmin.application.namespace(namespace)
       end
 
     end
